@@ -1,4 +1,4 @@
-# train_medsam.py (完整最终版)
+# train_medsam.py
 
 # -*- coding: utf-8 -*-
 import numpy as np
@@ -30,7 +30,7 @@ os.environ["VECLIB_MAXIMUM_THREADS"] = "4"
 os.environ["NUMEXPR_NUM_THREADS"] = "6"
 
 
-# --- 数据集加载类 (已为你的AS-OCT数据定制) ---
+# 数据集加载类
 class NpyDataset(Dataset):
     def __init__(self, data_root, bbox_shift=20):
         self.data_root = data_root
@@ -85,7 +85,7 @@ class NpyDataset(Dataset):
         )
 
 
-# --- 命令行参数设置 (已简化并适配你的任务) ---
+# 命令行参数设置
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "-i", "--tr_npy_path", type=str,
@@ -114,7 +114,7 @@ parser.add_argument("-use_amp", action="store_true", default=False, help="Use mi
 args = parser.parse_args()
 
 
-# --- 模型定义 (与原脚本相同) ---
+# 模型定义
 class MedSAM(nn.Module):
     def __init__(self, image_encoder, mask_decoder, prompt_encoder):
         super().__init__()
@@ -236,7 +236,7 @@ def main():
                 # 1. 获取模型的高分辨率预测 (1024x1024)
                 medsam_pred_1024 = medsam_model(image, boxes)
 
-                # --- 核心修复: 将预测下采样到与GT相同的尺寸 (256x256) ---
+                # 将预测下采样到与GT相同的尺寸 (256x256)
                 medsam_pred_256 = F.interpolate(
                     medsam_pred_1024,
                     size=(gt2D.shape[2], gt2D.shape[3]),  # 动态获取GT的尺寸

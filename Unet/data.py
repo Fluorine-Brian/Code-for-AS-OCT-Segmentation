@@ -1,4 +1,4 @@
-# data.py (完整替换)
+# data.py
 
 import os
 from PIL import Image

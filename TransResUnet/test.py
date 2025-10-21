@@ -6,13 +6,11 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from glob import glob
-from operator import add  # 用于累加指标
-from tqdm import tqdm  # 用于显示进度条 (需要安装: pip install tqdm)
+from operator import add
+from tqdm import tqdm
 
-# 确保 model.py, utils.py, metrics.py 文件存在且包含所需的类和函数
-from model import TResUnet  # 确保 model.py 文件存在且包含 TResUnet 类
-# from metrics import DiceLoss, DiceBCELoss # 评估时通常不需要损失函数
-from utils import calculate_metrics, create_dir  # 确保 utils.py 文件存在且包含 calculate_metrics 和 create_dir 函数
+from model import TResUnet
+from utils import calculate_metrics, create_dir
 
 
 # 沿用训练脚本中的 Dataset 类
@@ -38,7 +36,7 @@ class OCTDataset(Dataset):
         for img_path in self.image_paths:
             img_filename = os.path.basename(img_path)
             base_filename = os.path.splitext(img_filename)[0]
-            mask_filename = base_filename + '.png'  # 掩码扩展名为 .png
+            mask_filename = base_filename + '.png'
             mask_path = os.path.join(base_folder, mask_subfolder, mask_filename)
             self.mask_paths.append(mask_path)
 
@@ -50,7 +48,6 @@ class OCTDataset(Dataset):
             print(
                 f"警告: 图像数量 ({len(self.image_paths)}) 与掩码数量 ({len(self.mask_paths)}) 不匹配在文件夹 {base_folder}/{mask_subfolder}")
             # 如果数量不匹配，可以进一步检查哪些文件缺失，或者直接过滤掉不匹配的对
-            # 为了简单，这里只打印警告，假设文件是按顺序对应的
 
     def __getitem__(self, index):
         """ Image """
@@ -106,27 +103,22 @@ if __name__ == "__main__":
     """ Hyperparameters (应与训练时一致) """
     image_size = 256  # 模型输入尺寸
     size = (image_size, image_size)  # (width, height)
-    batch_size = 16  # 评估时 batch size 可以适当增大，因为它不涉及梯度计算
+    batch_size = 16
 
     # 数据集根路径 (包含 train 和 test 文件夹)
-    # **请确认这个路径是正确的**
     dataset_root_path = r"C:\srp_OCT\TransResUNet-main\data_preprocessing\dataset"   # 改为自己的路径
 
     # 定义需要评估的掩码类型及其对应的子文件夹名称
-    # **请确认这些子文件夹名称与你的实际文件夹名称一致**
     mask_types_to_evaluate = {
         'anterior_chamber': 'anterior_chamber',
         'lens': 'lens',
         'nucleus': 'nucleus',
         'right_iris': 'right_iris',
-        'left_iris': 'left_iris',
-        'left_scleral_spur': 'left_scleral_spur',
-        'right_scleral_spur': 'right_scleral_spur',
+        'left_iris': 'left_iris'
     }
     image_subfolder_name = 'images'  # 原始图像子文件夹名称
 
     # 训练好的模型检查点所在的目录
-    # **请确认这个路径是正确的，它应该包含 checkpoint_mask_type.pth 文件**
     checkpoints_base_dir = "files_oct_segmentation"
 
     # 可视化结果保存的根目录
@@ -194,8 +186,6 @@ if __name__ == "__main__":
         model = TResUnet()  # 实例化模型结构
         # 加载训练好的权重
         try:
-            # 使用 map_location=device 确保权重加载到正确的设备
-            # 添加 weights_only=True 参数
             model.load_state_dict(torch.load(checkpoint_path, map_location=device, weights_only=True))
             model = model.to(device)
             model.eval()  # 设置模型为评估模式 (关闭 dropout, batchnorm 等的训练行为)

@@ -1,4 +1,4 @@
-# train.py (完整替换)
+# train.py
 
 import torch
 import torch.nn as nn
@@ -8,7 +8,7 @@ import torchvision.transforms as transforms
 from tqdm import tqdm
 
 from net import UNet
-from data import BinarySegmentationDataset  # 导入我们自己的Dataset
+from data import BinarySegmentationDataset
 
 # 1. 数据路径设置
 TRAIN_DIR = '../data/train'
@@ -18,9 +18,9 @@ TEST_DIR = '../data/test'
 # 2. 超参数和设备设置
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 LEARNING_RATE = 1e-4
-BATCH_SIZE = 8  # 根据你的显存调整
+BATCH_SIZE = 8
 NUM_EPOCHS = 50
-NUM_WORKERS = 0  # Windows下建议设为0
+NUM_WORKERS = 0
 
 # 3. 数据预处理
 # 图像变换

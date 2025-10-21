@@ -1,10 +1,10 @@
-# net.py (修改后的版本)
+# net.py
 
 import torch
 import torch.nn as nn
 
 
-# DownBlock 和 UpBlock 类保持不变
+# DownBlock 和 UpBlock 类
 class DownBlock(nn.Module):
     def __init__(self, in_channels, out_channels, dropout_prob=0, max_pooling=True):
         super(DownBlock, self).__init__()
@@ -41,9 +41,8 @@ class UpBlock(nn.Module):
         return x
 
 
-# 定义完整的U-Net模型
+# U-Net模型
 class UNet(nn.Module):
-    # --- 核心修改: 更改默认参数以适应我们的任务 ---
     def __init__(self, n_channels=1, n_classes=1, n_filters=32):
         super(UNet, self).__init__()
 

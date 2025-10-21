@@ -1,4 +1,4 @@
-# evaluate.py (最终修复版 v2)
+# evaluate.py
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -116,7 +116,6 @@ def main():
     }
 
     print("Loading model...")
-    # --- 核心修复: 采用与训练脚本一致的加载逻辑 ---
     # 1. 使用官方权重来正确初始化一个标准的 Sam 模型结构
     sam_model = sam_model_registry[args.model_type](checkpoint=args.original_checkpoint)
 

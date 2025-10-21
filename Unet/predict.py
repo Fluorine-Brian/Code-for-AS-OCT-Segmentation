@@ -1,4 +1,4 @@
-# predict.py (完整替换)
+# predict.py
 
 import torch
 import torchvision.transforms as transforms
@@ -13,12 +13,11 @@ from net import UNet
 # 1. 参数设置
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MODEL_PATH = "./best_anterior_chamber_model.pth"
-# --- 新增: 定义测试集掩码的路径 ---
 TEST_IMAGE_DIR = "../data/test/images/"
 TEST_MASK_DIR = "../data/test/masks/"
 
 
-# --- 新增: IoU 和 Dice Score 计算函数 ---
+# IoU 和 Dice Score 计算函数
 def calculate_metrics(pred_mask, true_mask, smooth=1e-6):
     """
     计算单个掩码的 IoU 和 Dice Score.
@@ -67,7 +66,7 @@ def main():
         transforms.Normalize(mean=[0.5], std=[0.5])
     ])
 
-    # --- 新增: 掩码预处理 ---
+    # 掩码预处理
     mask_transform = transforms.Compose([
         transforms.Resize((256, 256), interpolation=transforms.InterpolationMode.NEAREST),
         transforms.ToTensor()
@@ -85,9 +84,9 @@ def main():
         img_path = os.path.join(TEST_IMAGE_DIR, img_name)
         image_pil = Image.open(img_path).convert("L")
 
-        # --- 新增: 加载对应的真实掩码 ---
+        # 加载对应的真实掩码
         # 假设掩码和图像的文件名相同，只是扩展名不同
-        mask_name = os.path.splitext(img_name)[0] + '.png'  # 假设掩码是png格式
+        mask_name = os.path.splitext(img_name)[0] + '.png'
         mask_path = os.path.join(TEST_MASK_DIR, mask_name)
         true_mask_pil = Image.open(mask_path).convert("L")
 
@@ -105,7 +104,7 @@ def main():
         # 将概率图 > 0.5 的部分视为前景
         pred_mask_np = (output > 0.5).float().squeeze(0).cpu().squeeze().numpy()
 
-        # --- 新增: 计算并记录当前样本的评估指标 ---
+        # 计算并记录当前样本的评估指标
         iou, dice = calculate_metrics(pred_mask_np, true_mask_np)
         iou_scores.append(iou)
         dice_scores.append(dice)

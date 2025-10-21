@@ -115,12 +115,6 @@ class OCTDataset(Dataset):
         return self.n_samples
 
 
-# 原有的 train 和 evaluate 函数保持不变，因为它们处理的是 PyTorch Tensor，
-# 并且模型输出和掩码都是单通道的，适合二分类。
-# from train import train, evaluate # 如果 train 和 evaluate 在另一个文件，需要导入
-# 这里假设 train 和 evaluate 函数就在当前文件中定义。
-
-
 def train(model, loader, optimizer, loss_fn, device):
     model.train()
     epoch_loss = 0.0
@@ -232,7 +226,7 @@ if __name__ == "__main__":
     image_size = 256  # 模型输入尺寸
     size = (image_size, image_size)  # (width, height)
     batch_size = 16
-    num_epochs = 100  # 可以根据需要调整
+    num_epochs = 100
     lr = 1e-4
     early_stopping_patience = 20  # 如果验证集F1连续50个epoch没有提升，则停止训练
 
@@ -245,9 +239,7 @@ if __name__ == "__main__":
         'lens': 'lens',
         'nucleus': 'nucleus',
         'right_iris': 'right_iris',
-        'left_iris': 'left_iris',
-        'left_scleral_spur': 'left_scleral_spur',
-        'right_scleral_spur': 'right_scleral_spur',
+        'left_iris': 'left_iris'
     }
     image_subfolder_name = 'images'  # 原始图像子文件夹名称
 
@@ -399,6 +391,6 @@ if __name__ == "__main__":
                 break
 
         print_and_save(train_log_file, f"--- {mask_type} 模型训练结束 ---")
-        train_log_file.close()  # 关闭日志文件
+        train_log_file.close()
 
     print("\n所有掩码类型的模型训练完成。")
