@@ -3,8 +3,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-
-join = os.path.join
 from tqdm import tqdm
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -13,8 +11,9 @@ import torch.nn.functional as F
 import argparse
 import glob
 
+join = os.path.join
 
-# --- 1. 从训练脚本中复制必要的模块 ---
+
 class MedSAM(torch.nn.Module):
     def __init__(self, image_encoder, mask_decoder, prompt_encoder):
         super().__init__()
@@ -71,7 +70,6 @@ class EvaluationDataset(Dataset):
         return img_1024_tensor, gt_multi_label_tensor
 
 
-# --- 2. 定义评估指标计算函数 ---
 def calculate_metrics(pred_mask, true_mask, smooth=1e-6):
     pred_mask = (pred_mask > 0.5).astype(bool)
     true_mask = true_mask.astype(bool)
@@ -95,7 +93,7 @@ def main():
     )
     parser.add_argument(
         "-c", "--checkpoint", type=str,
-        default='work_dir/MedSAM-AS-OCT-Finetune-20251020-1740/medsam_model_best.pth',
+        default='work_dir/MedSAM-AS-OCT-Finetune-20251022-1945/medsam_model_best.pth',
         help="Path to YOUR FINE-TUNED MedSAM model checkpoint (e.g., work_dir/.../medsam_model_best.pth)."
     )
     parser.add_argument(
@@ -110,16 +108,16 @@ def main():
     device = torch.device(args.device)
 
     CLASS_NAMES = {
-        1: 'Anterior Chamber',
-        2: 'Lens',
-        3: 'Iris'
+        1: 'anterior_chamber',
+        2: 'lens',
+        3: 'left_iris',
+        4: 'right_iris',
+        5: 'nucleus'
     }
 
     print("Loading model...")
-    # 1. 使用官方权重来正确初始化一个标准的 Sam 模型结构
     sam_model = sam_model_registry[args.model_type](checkpoint=args.original_checkpoint)
 
-    # 2. 将 Sam 模型的各个部分组装成我们自定义的 MedSAM 模型
     medsam_model = MedSAM(
         image_encoder=sam_model.image_encoder,
         mask_decoder=sam_model.mask_decoder,
@@ -127,23 +125,18 @@ def main():
     ).to(device)
 
     print(f"Loading your fine-tuned weights from: {args.checkpoint}")
-    # 3. 加载我们保存的 checkpoint 字典
     checkpoint = torch.load(args.checkpoint, map_location=device)
-    # 4. 从字典中只取出 'model' 键对应的 state_dict，然后加载它
     medsam_model.load_state_dict(checkpoint['model'])
 
     medsam_model.eval()
     print("Model loaded successfully.")
 
-    # 准备数据集
     test_dataset = EvaluationDataset(args.data_path)
     test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
-    # 初始化用于存储分数的字典
     iou_scores = {id: [] for id in CLASS_NAMES.keys()}
     dice_scores = {id: [] for id in CLASS_NAMES.keys()}
 
-    # 开始评估循环
     with torch.no_grad():
         for image, gt_multi_label in tqdm(test_dataloader, desc="Evaluating"):
             image = image.to(device)
@@ -178,7 +171,6 @@ def main():
                 iou_scores[class_id].append(iou)
                 dice_scores[class_id].append(dice)
 
-    # 打印最终评估报告
     print("\n" + "=" * 50)
     print("           MedSAM Fine-tuning Evaluation Report")
     print("=" * 50)

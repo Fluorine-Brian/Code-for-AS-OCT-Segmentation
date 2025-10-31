@@ -106,7 +106,7 @@ if __name__ == "__main__":
     batch_size = 16
 
     # 数据集根路径 (包含 train 和 test 文件夹)
-    dataset_root_path = r"C:\srp_OCT\TransResUNet-main\data_preprocessing\dataset"   # 改为自己的路径
+    dataset_root_path = r"C:\srp_OCT\TransResUNet-main\AS-OCT_Segmentation\MedSAM\data"  # 改为自己的路径
 
     # 定义需要评估的掩码类型及其对应的子文件夹名称
     mask_types_to_evaluate = {
@@ -119,7 +119,7 @@ if __name__ == "__main__":
     image_subfolder_name = 'images'  # 原始图像子文件夹名称
 
     # 训练好的模型检查点所在的目录
-    checkpoints_base_dir = "files_oct_segmentation"
+    checkpoints_base_dir = "files_tresunet_segmentation"
 
     # 可视化结果保存的根目录
     output_results_base_dir = "evaluation_results_viz"  # 修改保存目录名称以区分
@@ -130,8 +130,9 @@ if __name__ == "__main__":
     mask_colors = {
         'anterior_chamber': (200, 200, 100),  # 浅黄色
         'lens': (100, 200, 100),  # 浅绿色
-        'cornea': (100, 100, 200),  # 浅蓝色
-        'iris': (200, 100, 200)  # 浅紫色
+        'nucleus': (100, 100, 200),  # 浅蓝色
+        'left_iris': (200, 100, 200),  # 浅紫色
+        'right_iris': (200, 100, 200)
         # 可以根据需要调整这些颜色
     }
 
@@ -195,10 +196,15 @@ if __name__ == "__main__":
             continue
 
         """ Evaluation Loop """
-        # 根据 calculate_metrics 函数返回的指标数量初始化累加器
-        # 假设 calculate_metrics 返回 Jaccard, F1, Recall, Precision, Accuracy, F2, Dice, IoU 共 8 个指标
-        num_metrics = 6  # 增加指标数量
-        total_metrics_score = [0.0] * num_metrics
+        # --- 修改: 存储每个样本的指标，而不是直接累加批次平均值 ---
+        # 假设 calculate_metrics 返回 Jaccard, F1, Recall, Precision, Accuracy, F2, 共 6 个指标
+        all_jaccard = []
+        all_f1 = []
+        all_recall = []
+        all_precision = []
+        all_accuracy = []
+        all_f2 = []
+
         time_taken = []  # 用于计算FPS
 
         num_batches = len(test_loader)
@@ -215,123 +221,97 @@ if __name__ == "__main__":
 
                 # --- FPS calculation ---
                 start_time = time.time()
-                # 调用模型，不再请求 heatmap
-                y_pred = model(x)  # 假设 model(x) 只返回预测 logits
+                y_pred = model(x)
                 end_time = time.time() - start_time
                 time_taken.append(end_time)
 
-                # 将预测结果通过 sigmoid 转换为概率
                 y_pred_prob = torch.sigmoid(y_pred)
-                # 阈值化为二值掩码 (0或1)
                 y_pred_binary = (y_pred_prob > 0.5).float()
 
-                # --- 可视化保存 ---
-                # 将 tensor 移到 CPU 并转换为 numpy
-                x_np = x.cpu().numpy()  # (B, C, H, W)
-                y_np = y.cpu().numpy()  # (B, 1, H, W)
-                y_pred_binary_np = y_pred_binary.cpu().numpy()  # (B, 1, H, W)
+                # --- 可视化保存 (保持不变) ---
+                x_np = x.cpu().numpy()
+                y_np = y.cpu().numpy()
+                y_pred_binary_np = y_pred_binary.cpu().numpy()
 
                 batch_size_actual = x.size(0)
 
                 for j in range(batch_size_actual):
-                    # 获取当前图像的文件名（不含扩展名）
                     img_filename = os.path.basename(img_paths[j])
                     name = os.path.splitext(img_filename)[0]
 
-                    # 准备原始图像 (H, W, C), 0-255
-                    # x_np 是 (B, C, H, W)，需要转置并缩放到 0-255
                     original_img_viz = np.transpose(x_np[j], (1, 2, 0)) * 255.0
                     original_img_viz = original_img_viz.astype(np.uint8)
 
-                    # 准备地面真相掩码 (H, W, C), 0 或 255
-                    # y_np 是 (B, 1, H, W)，需要移除通道维度，缩放到 0-255，并转为 3 通道
                     gt_mask_viz = np.squeeze(y_np[j], axis=0) * 255.0
                     gt_mask_viz = gt_mask_viz.astype(np.uint8)
-                    gt_mask_viz = np.stack([gt_mask_viz] * 3, axis=-1)  # 转为 3 通道
+                    gt_mask_viz = np.stack([gt_mask_viz] * 3, axis=-1)
 
-                    # 准备预测掩码 (H, W, C), 0 或 255
-                    # y_pred_binary_np 是 (B, 1, H, W)，需要移除通道维度，缩放到 0-255，并转为 3 通道
                     pred_mask_viz = np.squeeze(y_pred_binary_np[j], axis=0) * 255.0
                     pred_mask_viz = pred_mask_viz.astype(np.uint8)
-                    pred_mask_viz_3channel = np.stack([pred_mask_viz] * 3, axis=-1)  # 转为 3 通道用于拼接
+                    pred_mask_viz_3channel = np.stack([pred_mask_viz] * 3, axis=-1)
 
-                    # --- 创建叠加图 (Overlay) ---
-                    # 将预测的二值掩码 (0或255) 转换为布尔掩码 (True/False)
                     mask_bool = pred_mask_viz > 0
-                    # 创建原始图像的副本用于叠加
                     overlay_img_viz = original_img_viz.copy()
-                    # 将预测掩码为 True 的像素位置设置为指定的颜色
                     overlay_img_viz[mask_bool] = current_mask_color
 
-                    # 创建分隔线
                     line = np.ones((size[1], 10, 3), dtype=np.uint8) * 255
 
-                    # 拼接图像: 原始图像 | GT掩码 | 预测掩码 | 叠加图
-                    # 所有数组现在都是 3 维 (H, W, C) 或 (H, 10, 3)
                     cat_images = np.concatenate([
                         original_img_viz, line,
                         gt_mask_viz, line,
-                        pred_mask_viz_3channel, line,  # 使用 3 通道的预测掩码进行拼接
+                        pred_mask_viz_3channel, line,
                         overlay_img_viz
                     ], axis=1)
 
-                    # 保存拼接图像、预测掩码和叠加图
                     cv2.imwrite(os.path.join(joint_save_dir, f"{name}.jpg"), cat_images)
-                    cv2.imwrite(os.path.join(mask_save_dir, f"{name}.png"), pred_mask_viz)  # 保存单通道预测掩码 (0或255)
+                    cv2.imwrite(os.path.join(mask_save_dir, f"{name}.png"), pred_mask_viz)
                     cv2.imwrite(os.path.join(overlay_save_dir, f"{name}.jpg"), overlay_img_viz)
 
-                # --- 计算指标 ---
-                # calculate_metrics 期望单个图像的 tensor (1, H, W)
-                batch_metrics = [0.0] * num_metrics  # 累加当前批次的指标
-
+                # --- 计算指标 (修改为存储每个样本的指标) ---
                 for j in range(batch_size_actual):
-                    # 提取批次中的单个图像和掩码
-                    single_y_true = y[j]  # shape (1, H, W)
-                    single_y_pred_binary = y_pred_binary[j]  # shape (1, H, W)
+                    single_y_true = y[j]
+                    single_y_pred_binary = y_pred_binary[j]
 
-                    # 计算单个图像的指标
-                    # calculate_metrics 应该期望 tensor 输入
                     score = calculate_metrics(single_y_true, single_y_pred_binary)
 
-                    # **检查 calculate_metrics 返回的指标数量**
-                    if len(score) != num_metrics:
-                        print(
-                            f"\n警告: calculate_metrics 函数返回的指标数量不匹配! 预期 {num_metrics}, 实际 {len(score)}. 请检查 utils.py 中的 calculate_metrics 函数.")
-                        # 为了避免崩溃，这里只累加前 num_metrics 个指标 (如果返回的少于 num_metrics 会再次报错)
-                        # 更好的做法是根据实际返回数量调整累加
-                        score = score[:num_metrics]  # 截断或填充，这里选择截断
+                    # 假设 calculate_metrics 返回顺序是 Jaccard, F1, Recall, Precision, Accuracy, F2
+                    all_jaccard.append(score[0])
+                    all_f1.append(score[1])
+                    all_recall.append(score[2])
+                    all_precision.append(score[3])
+                    all_accuracy.append(score[4])
+                    all_f2.append(score[5])
 
-                    batch_metrics = list(map(add, batch_metrics, score))
-
-                # 将批次指标平均后累加到总指标
-                total_metrics_score = list(
-                    map(add, total_metrics_score, [m / batch_size_actual for m in batch_metrics]))
-
-        # 计算整个测试集上的平均指标
-        # 注意：这里需要除以批次数量 num_batches，因为上面累加的是批次平均值
-        avg_metrics = [m / num_batches for m in total_metrics_score]
-
-        # 假设 calculate_metrics 返回顺序是 Jaccard, F1, Recall, Precision, Accuracy, F2,
-        avg_iou = avg_metrics[0]
-        avg_dice = avg_metrics[1]
-        avg_recall = avg_metrics[2]
-        avg_precision = avg_metrics[3]
-        avg_acc = avg_metrics[4]
-        avg_f2 = avg_metrics[5]
+        # --- 计算均值和标准差 ---
+        # 确保列表不为空，避免计算 np.mean/np.std 时报错
+        if all_jaccard:
+            mean_jaccard, std_jaccard = np.mean(all_jaccard), np.std(all_jaccard)
+            mean_f1, std_f1 = np.mean(all_f1), np.std(all_f1)
+            mean_recall, std_recall = np.mean(all_recall), np.std(all_recall)
+            mean_precision, std_precision = np.mean(all_precision), np.std(all_precision)
+            mean_accuracy, std_accuracy = np.mean(all_accuracy), np.std(all_accuracy)
+            mean_f2, std_f2 = np.mean(all_f2), np.std(all_f2)
+        else:
+            mean_jaccard, std_jaccard = 0.0, 0.0
+            mean_f1, std_f1 = 0.0, 0.0
+            mean_recall, std_recall = 0.0, 0.0
+            mean_precision, std_precision = 0.0, 0.0
+            mean_accuracy, std_accuracy = 0.0, 0.0
+            mean_f2, std_f2 = 0.0, 0.0
 
         # 计算平均FPS
-        # time_taken 记录的是每个 batch 的推理时间，需要除以 batch size 得到每张图的平均时间
         mean_time_per_image = np.mean(time_taken) / batch_size if time_taken and batch_size > 0 else 0
         mean_fps = 1 / mean_time_per_image if mean_time_per_image > 0 else 0
 
         print(f"\n{mask_type} 测试集评估结果:")
-        print(f"  IoU: {avg_iou:.4f}")
-        print(f"  Dice: {avg_dice:.4f}")
-        print(f"  Recall: {avg_recall:.4f}")
-        print(f"  Precision: {avg_precision:.4f}")
-        print(f"  Accuracy: {avg_acc:.4f}")
-        print(f"  F2 Score: {avg_f2:.4f}")
+        print(f"  IoU (Jaccard): {mean_jaccard:.4f} \u00B1 {std_jaccard:.4f}")  # IoU通常指Jaccard
+        print(f"  Dice (F1):     {mean_f1:.4f} \u00B1 {std_f1:.4f}")
+        print(f"  Recall:        {mean_recall:.4f} \u00B1 {std_recall:.4f}")
+        print(f"  Precision:     {mean_precision:.4f} \u00B1 {std_precision:.4f}")
+        print(f"  Accuracy:      {mean_accuracy:.4f} \u00B1 {std_accuracy:.4f}")
+        print(f"  F2 Score:      {mean_f2:.4f} \u00B1 {std_f2:.4f}")
         print(f"  平均推理时间 (每张图像): {mean_time_per_image:.4f} 秒")
         print(f"  平均 FPS: {mean_fps:.2f}")
 
     print("\n所有掩码类型的模型评估完成。")
+

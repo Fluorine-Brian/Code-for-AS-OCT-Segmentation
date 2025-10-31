@@ -8,35 +8,33 @@ import torchvision.transforms as transforms
 from tqdm import tqdm
 
 from net import UNet
-from data import BinarySegmentationDataset
+from data import MultiClassSegmentationDataset
 
-# 1. 数据路径设置
-TRAIN_DIR = '../data/train'
-VAL_DIR = '../data/val'
-TEST_DIR = '../data/test'
 
-# 2. 超参数和设备设置
+TRAIN_DIR = '../dataset\segmentation_dataset/train'
+VAL_DIR = '../dataset/segmentation_dataset/val'
+CLASSES = ['anterior_chamber', 'lens', 'nucleus', 'left_iris', 'right_iris']
+NUM_CLASSES = len(CLASSES)
+
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 LEARNING_RATE = 1e-4
 BATCH_SIZE = 8
-NUM_EPOCHS = 50
+NUM_EPOCHS = 10
 NUM_WORKERS = 0
 
-# 3. 数据预处理
-# 图像变换
+
 image_transform = transforms.Compose([
     transforms.Resize((256, 256)),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.5], std=[0.5])  # 灰度图归一化
+    transforms.Normalize(mean=[0.5], std=[0.5])
 ])
-# 掩码变换
 mask_transform = transforms.Compose([
     transforms.Resize((256, 256), interpolation=transforms.InterpolationMode.NEAREST),
     transforms.ToTensor()
 ])
 
 
-# 4. 定义损失函数 (Dice + BCE)
+# 定义损失函数 (Dice + BCE)
 def dice_loss(pred, target, smooth=1e-6):
     pred_flat = pred.view(-1)
     target_flat = target.view(-1)
@@ -50,7 +48,6 @@ def combined_loss(pred, target):
     return 0.6 * dice + 0.4 * bce
 
 
-# 5. 训练和验证函数
 def train_one_epoch(loader, model, optimizer, loss_fn):
     loop = tqdm(loader, desc="Training")
     model.train()
@@ -97,35 +94,31 @@ def validate(loader, model, loss_fn):
 # 6. 主函数
 def main():
     # 创建数据集和加载器
-    train_dataset = BinarySegmentationDataset(TRAIN_DIR, image_transform, mask_transform)
-    val_dataset = BinarySegmentationDataset(VAL_DIR, image_transform, mask_transform)
+    train_dataset = MultiClassSegmentationDataset(
+        TRAIN_DIR, classes=CLASSES, image_transform=image_transform, mask_transform=mask_transform
+    )
+    val_dataset = MultiClassSegmentationDataset(
+        VAL_DIR, classes=CLASSES, image_transform=image_transform, mask_transform=mask_transform
+    )
 
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
     val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS)
 
     # 初始化模型 (n_channels=1, n_classes=1 for binary)
-    model = UNet(n_channels=1, n_classes=1, n_filters=32).to(DEVICE)
-
-    # 优化器
+    model = UNet(n_channels=1, n_classes=NUM_CLASSES, n_filters=32).to(DEVICE)
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-
-    # 早停参数
     best_val_loss = float('inf')
     patience = 8
     patience_counter = 0
-
-    # 开始训练
     for epoch in range(NUM_EPOCHS):
         print(f"--- Epoch {epoch + 1}/{NUM_EPOCHS} ---")
         train_loss = train_one_epoch(train_loader, model, optimizer, combined_loss)
         val_loss = validate(val_loader, model, combined_loss)
-
-        # 早停逻辑
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             patience_counter = 0
-            torch.save(model.state_dict(), 'best_anterior_chamber_model.pth')
-            print("Model saved to best_anterior_chamber_model.pth")
+            torch.save(model.state_dict(), 'best_multiclass_model.pth')
+            print("Model saved to best_multiclass_model.pth")
         else:
             patience_counter += 1
             if patience_counter >= patience:
