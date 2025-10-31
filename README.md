@@ -48,19 +48,20 @@ Follow these instructions to set up the project environment and prepare the data
 
 1.  **Clone the repository:**
     ```bash
-    $ git clone https://github.com/Fluorine-Brian/Code-for-AS-OCT-Segmentation.git
-    $ cd Code-for-AS-OCT-Segmentation
+    git clone https://github.com/Fluorine-Brian/Code-for-AS-OCT-Segmentation.git
+    cd Code-for-AS-OCT-Segmentation
     ```
 
 2.  **Create and activate a Conda environment:**
     ```bash
-    $ conda create --name as-oct-seg python=3.9
-    $ conda activate as-oct-seg
+    conda create --name as-oct-seg python=3.9
+    conda activate as-oct-seg
     ```
 
 3.  **Install the required dependencies:**
     ```bash
-    $ pip install -r requirements.txt
+    pip install torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu118
+    pip install -r requirements.txt
     ```
 
 ## Dataset Preparation
