@@ -1,0 +1,21 @@
+{
+    "name": "AS-OCT",
+    "description": "Anterior Segment Optical Coherence Tomography",
+    "reference": "Your Name or Institution",
+    "licence": "Private",
+    "release": "1.0 05/11/2025",
+    "tensorImageSize": "3D",
+    "labels": {
+        "background": 0,
+        "lens": 1,
+        "left_iris": 2,
+        "right_iris": 3,
+        "anterior_chamber": 4,
+        "nucleus": 5
+    },
+    "numTraining": 675,
+    "file_ending": ".nii.gz",
+    "channel_names": {
+        "0": "OCT"
+    }
+}
