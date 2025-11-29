@@ -110,7 +110,7 @@ Additional information:
 Competitions:
 - [AutoPET II](documentation/competitions/AutoPETII.md)
 
-[//]: # (- [Ignore label]&#40;documentation/ignore_label.md&#41;)
+[//]: # "- [Ignore label]&#40;documentation/ignore_label.md&#41;"
 
 ## Where does nnU-Net perform well and where does it not perform?
 nnU-Net excels in segmentation problems that need to be solved by training from scratch, 
