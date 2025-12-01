@@ -12,7 +12,7 @@ This repository contains the code to reproduce our benchmark results using three
 
 The overall workflow for dataset creation and model validation is illustrated below:
 
-![](\流程图.png)
+![](\flowchart.png)
 
 **(a)** Patient Selection across four categories. **(b)** Image Acquisition using Tomey CASIA2. **(c)** Rigorous Image Quality Assessment and Selection. **(d)** Annotation of key anatomical structures. **(e)** Inter-annotator evaluation to ensure consistency. **(f)** Validation of the dataset using benchmark segmentation and positioning models.
 
